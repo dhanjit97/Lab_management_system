@@ -8,7 +8,7 @@ To run the code:
 About the project:
 
   It is a simple Computer lab management system application that takes into consideration a series of conditions: 
-1. Nomber of labs available 
+1. Number of labs available 
 2. Number of PCs available in each lab
 3. if the number of PCs available in each lab is more than the number of students in a class
       the lab can be assigned to the class
