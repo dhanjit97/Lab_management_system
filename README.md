@@ -2,7 +2,7 @@ It is a simple Python Program
 
 To run the code:
 1. Python should be installed on your system
-2. You Might need Vs cide or pycharm additionally.(not sure)
+2. You Might need Vs code or pycharm additionally.(not sure)
 
 
 About the project:
