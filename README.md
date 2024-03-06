@@ -12,9 +12,9 @@ About the project:
 2. Number of PCs available in each lab
 3. if the number of PCs available in each lab is more than the number of students in a class
       the lab can be assigned to the class
-4. If the all the labs are currently occupied or not
+4. If all the labs are currently occupied
       if yes then the labs will be free to be assigned after the time duration for which it was assigned
-      if no then the labs are occupied then labs will be assigned according to the condition no 3.
+      if no then the labs are free to be assigned according to condition no 3.
 5. Saves all the allocations in a csv file  
 
 
