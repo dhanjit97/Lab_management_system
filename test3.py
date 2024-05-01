@@ -1,11 +1,10 @@
 import tkinter as tk
-from tkinter import messagebox
 import threading
 import time
-import csv
+import sqlite3
 
 class Lab:
-    def __init__(self, lab_id, num_computers):
+    def __init__(self, lab_id, num_computers, conn):
         self.lab_id = lab_id
         self.num_computers = num_computers
         self.available_computers = num_computers
@@ -15,6 +14,7 @@ class Lab:
         self.assigned_time = None
         self.time_duration = None
         self.total_students = None
+        self.conn = conn
 
     def assign_class(self, class_name, num_students, class_duration_hours):
         class_duration_seconds = class_duration_hours * 3600  # Convert hours to seconds
@@ -29,7 +29,7 @@ class Lab:
             output_text.insert(tk.END, message + "\n")
             self.assignment_thread = threading.Thread(target=self.run_class, args=(class_name, class_duration_seconds))
             self.assignment_thread.start()
-            self.save_to_csv()
+            self.save_to_database()
         elif self.current_class is not None:
             message = f"Lab {self.lab_id} is occupied by '{self.current_class}' class."
             output_text.insert(tk.END, message + "\n")
@@ -44,36 +44,56 @@ class Lab:
         message = f"Class '{class_name}' completed in Lab {self.lab_id}."
         output_text.insert(tk.END, message + "\n")
 
-    def save_to_csv(self):
-        with open("Lab_data.csv", mode="a", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow([self.lab_id, self.class_name, self.assigned_time, self.time_duration, self.total_students])
+    def save_to_database(self):
+        cursor = self.conn.cursor()
+        sql = "INSERT INTO lab_data (lab_id, class_name, assigned_time, time_duration, total_students) VALUES (?, ?, ?, ?, ?)"
+        val = (self.lab_id, self.class_name, self.assigned_time, self.time_duration, self.total_students)
+        cursor.execute(sql, val)
+        self.conn.commit()
+        cursor.close()
 
+    def display_status(self):
+        message = f"Lab {self.lab_id}: Current Class - {self.current_class}, Available Computers - {self.available_computers}"
+        output_text.insert(tk.END, message + "\n")
 
 class LabManagementSystem:
-    def __init__(self, lab_capacity_list):
-        self.labs = [Lab(i + 1, num_computers) for i, num_computers in enumerate(lab_capacity_list)]
+    def __init__(self, lab_capacity_list, conn):
+        self.labs = [Lab(i + 1, num_computers, conn) for i, num_computers in enumerate(lab_capacity_list)]
 
     def assign_class_to_lab(self, class_name, num_students, class_duration_hours):
-        for lab in self.labs:
-            if lab.current_class is None:
-                lab.assign_class(class_name, num_students, class_duration_hours)
-                return
-        message = "No available labs for the class at the moment."
-        output_text.insert(tk.END, message + "\n")
+        available_labs = [lab for lab in self.labs if lab.current_class is None and lab.available_computers >= num_students]
+        if available_labs:
+            lab = available_labs[0]  # Get the first available lab
+            lab.assign_class(class_name, num_students, class_duration_hours)
+        else:
+            message = "No available labs for the class at the moment."
+            output_text.insert(tk.END, message + "\n")
 
     def display_lab_status(self):
         for lab in self.labs:
             lab.display_status()
 
-
 def assign_class():
     class_name = class_name_entry.get()
     num_students = int(num_students_entry.get())
     class_duration_hours = int(class_duration_entry.get())
-    lab_system.assign_class_to_lab(class_name, num_students, class_duration_hours)
-    lab_system.display_lab_status()
+    if lab_system is not None:
+        lab_system.assign_class_to_lab(class_name, num_students, class_duration_hours)
+        lab_system.display_lab_status()
 
+# Connect to the SQLite database
+conn = sqlite3.connect('lab_management.db')
+cursor = conn.cursor()
+
+# Create lab_data table if it does not exist
+cursor.execute('''CREATE TABLE IF NOT EXISTS lab_data
+             (lab_id INTEGER, class_name TEXT, assigned_time TEXT, time_duration INTEGER, total_students INTEGER)''')
+
+# Commit the table creation
+conn.commit()
+
+# Close the cursor
+cursor.close()
 
 root = tk.Tk()
 root.title("Lab Management System")
@@ -84,7 +104,7 @@ num_labs = 0
 def create_lab_system():
     global lab_system, num_labs
     lab_capacity_list = [int(entry.get()) for entry in lab_capacity_entries]
-    lab_system = LabManagementSystem(lab_capacity_list)
+    lab_system = LabManagementSystem(lab_capacity_list, conn)
     num_labs = len(lab_capacity_list)
 
 num_labs_label = tk.Label(root, text="Enter the number of labs:")
@@ -119,7 +139,6 @@ def create_lab_capacity_entries():
 
     assign_class_button.grid(row=num_labs + 4, column=0, columnspan=2, sticky=tk.W)
 
-
 create_lab_capacity_entries_button = tk.Button(root, text="Create Lab Capacity Entries", command=create_lab_capacity_entries)
 create_lab_capacity_entries_button.grid(row=num_labs + 1, column=0, columnspan=2, sticky=tk.W)
 
@@ -148,3 +167,6 @@ output_text = tk.Text(root, height=30, width=50)
 output_text.grid(row=0, column=3, rowspan=num_labs + 6, padx=10, pady=10)
 
 root.mainloop()
+
+# Close the database connection when the application is closed
+conn.close()
